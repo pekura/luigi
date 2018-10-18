@@ -77,7 +77,7 @@ export class openIdConnect {
             log('signout response', response);
             resolve(response);
           })
-          .catch(function (err) {
+          .catch(function(err) {
             reject(response);
             log(err);
           });
@@ -122,7 +122,7 @@ export class openIdConnect {
               window.location.href = window.location.origin;
             }
             // resolve(true); // not resolving in order to not interrupt window.location.href
-          }, 50);
+          });
         })
         .catch(err => {
           console.error(err);
