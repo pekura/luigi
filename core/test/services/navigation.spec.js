@@ -342,7 +342,7 @@ describe('Navigation', function() {
         ]
       };
       // when
-      const res = await navigation.getLeftNavData(current, current);
+      const res = await navigation.getLeftNavData(current);
       expect(res.selectedNode.pathSegment).to.equal('settings');
     });
     it('returns correct data on virtual node keepSelectedForChildren usecase', async () => {
@@ -368,7 +368,7 @@ describe('Navigation', function() {
         ]
       };
       // when
-      const res = await navigation.getLeftNavData(current, current);
+      const res = await navigation.getLeftNavData(current);
       expect(res.selectedNode.pathSegment).to.equal('projects');
     });
   });

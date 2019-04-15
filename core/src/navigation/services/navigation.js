@@ -245,11 +245,10 @@ const getTruncatedChildren = children => {
 
 export const getTopNavData = async componentData => {
   const updatedCompData = {};
-  if (
-    componentData.pathData &&
-    componentData.topLevel < componentData.pathData.length
-  ) {
-    const children = componentData.pathData[componentData.topLevel].children;
+  const topLevel =
+    componentData.topLevel === undefined ? 0 : componentData.topLevel;
+  if (componentData.pathData && topLevel < componentData.pathData.length) {
+    const children = componentData.pathData[topLevel].children;
     let selectedNode = null;
     let visibleNodeCount = 0;
     if (children) {
@@ -273,10 +272,9 @@ export const getTopNavData = async componentData => {
 
 export const getLeftNavData = async componentData => {
   const updatedCompData = {};
-  if (
-    componentData.pathData &&
-    componentData.topLevel < componentData.pathData.length
-  ) {
+  const topLevel =
+    componentData.topLevel === undefined ? 1 : componentData.topLevel;
+  if (componentData.pathData && topLevel < componentData.pathData.length) {
     const pathDataTruncatedChildren = getTruncatedChildren(
       componentData.pathData
     );
