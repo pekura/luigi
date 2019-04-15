@@ -72,7 +72,9 @@
     },
     onstate({ changed, current, previous }) {
       if (!previous || previous.pathData != current.pathData) {
-        setTopNavData(this);
+        if (this.get().topLevel >= 0) {
+          setTopNavData(this);
+        }
       }
       this.set({hasApps: this.get().topLevel >= 0 && this.get().visibleNodeCount > 1});
     },
@@ -96,7 +98,7 @@
         if (!selectedNode) {
           return "";
         }
-        if (selectedNode.pathSegment.startsWith(':') && pathParams) {
+        if (selectedNode.pathSegment && selectedNode.pathSegment.startsWith(':') && pathParams) {
           return pathParams[selectedNode.pathSegment.substr(1)];
         } else {
           return selectedNode.label || selectedNode.pathSegment;

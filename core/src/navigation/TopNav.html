@@ -252,7 +252,7 @@
         if (!node) {
           return "";
         }
-        if (node.pathSegment.startsWith(':') && pathParams) {
+        if (node.pathSegment && node.pathSegment.startsWith(':') && pathParams) {
           return pathParams[node.pathSegment.substr(1)];
         } else {
           return node.label || node.pathSegment;
