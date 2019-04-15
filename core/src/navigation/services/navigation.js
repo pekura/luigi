@@ -215,8 +215,8 @@ const getNodes = (children, pathData) => {
   return [];
 };
 
-const getGroupedChildren = (children, current) => {
-  const nodes = getNodes(children, current.pathData);
+const getGroupedChildren = (children, pathData) => {
+  const nodes = getNodes(children, pathData);
   return NavigationHelpers.groupNodesBy(nodes, 'category');
 };
 
@@ -243,9 +243,40 @@ const getTruncatedChildren = children => {
   return res;
 };
 
-export const getLeftNavData = async (current, componentData) => {
+export const getTopNavData = async componentData => {
   const updatedCompData = {};
-  if (current.pathData && 1 < current.pathData.length) {
+  if (
+    componentData.pathData &&
+    componentData.topLevel < componentData.pathData.length
+  ) {
+    const children = componentData.pathData[componentData.topLevel].children;
+    let selectedNode = null;
+    let visibleNodeCount = 0;
+    if (children) {
+      children.map(node => {
+        componentData.pathData.forEach(n => {
+          if (!selectedNode && n === node) {
+            selectedNode = node;
+          }
+        });
+        if (!node.hideFromNav) {
+          visibleNodeCount++;
+        }
+      });
+    }
+    updatedCompData.children = children;
+    updatedCompData.selectedNode = selectedNode;
+    updatedCompData.visibleNodeCount = visibleNodeCount;
+  }
+  return updatedCompData;
+};
+
+export const getLeftNavData = async componentData => {
+  const updatedCompData = {};
+  if (
+    componentData.pathData &&
+    componentData.topLevel < componentData.pathData.length
+  ) {
     const pathDataTruncatedChildren = getTruncatedChildren(
       componentData.pathData
     );
@@ -258,7 +289,10 @@ export const getLeftNavData = async (current, componentData) => {
     }
 
     const children = await getChildren(lastElement, componentData.context);
-    const groupedChildren = getGroupedChildren(children, current);
+    const groupedChildren = getGroupedChildren(
+      children,
+      componentData.pathData
+    );
     updatedCompData.hasCategoriesWithIcon = false;
     Object.values(groupedChildren).forEach(value => {
       if (

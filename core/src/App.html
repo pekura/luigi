@@ -37,11 +37,14 @@
   {/if}
   <TopNav
     pathData="{navigationPath}"
+    pathParams="{pathParams}"
+    topLevel="{hasAppSwitcher ? 1 : 0}"
     on:handleClick="handleNavClick(event.node)"
   />
   {#if !(hideNav||hideSideNav) || simpleSlideInNav}
   <LeftNav
     pathData="{navigationPath}"
+    topLevel="{hasAppSwitcher ? 2 : 1}"
     on:handleClick="handleNavClick(event.node)"
   />
   {/if}
@@ -273,6 +276,9 @@
         document.body.classList.add('lui-simpleSlideInNav', 'lui-mobileOnly');
         this.set({ simpleSlideInNav: true });
       }
+      this.set({
+        hasAppSwitcher: LuigiConfig.getConfigValue('navigation.hasAppSwitcher')
+      });
     },
     onstate({ changed, current, previous }) {},
     actions: {

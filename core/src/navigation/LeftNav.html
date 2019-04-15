@@ -1,5 +1,5 @@
 <div class="fd-app__sidebar {hideNavComponent ? 'hideNavComponent' : ''}">
-  {#if children && pathData.length > 1}
+  {#if children && pathData.length > topLevel}
   <nav class="fd-side-nav" on:keyup="handleKey(event)">
     {#each Object.entries(children) as [key, nodes]} {#if key === 'undefined'}
     <div class="fd-side-nav__group">
@@ -143,12 +143,9 @@
   import * as NavigationHelpers from '../utilities/helpers/navigation-helpers';
   import { LuigiConfig } from '../services/config.js';
 
-  const setLeftNavData = async (current, component) => {
+  const setLeftNavData = async (component) => {
     const componentData = component.get();
-    const leftNavData = await Navigation.getLeftNavData(current, componentData);
-    if (!leftNavData) {
-      return;
-    }
+    const leftNavData = await Navigation.getLeftNavData(componentData);
     component.set(leftNavData);
     window.LEFTNAVDATA = leftNavData.groupedChildren;
   };
@@ -164,7 +161,7 @@
     },
     onstate({ changed, current, previous }) {
       if (!previous || previous.pathData != current.pathData) {
-        setLeftNavData(current, this);
+        setLeftNavData(this);
       }
     },
     helpers: {

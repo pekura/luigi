@@ -10,34 +10,44 @@
 <div class="fd-shellbar__product">
   {#if !hasApps}
   <div class="fd-shellbar__title" on:click="goTo('/')">{title}</div>
-  <!-- TODO Application Switcher -->
+  <!-- Application Switcher -->
   {:else}
-  <div class="fd-popover fd-popover--right">
-    <div class="fd-popover__control">
+  <div class="fd-popover fd-popover--left">
+    <div class="fd-popover__control" on:click="event.stopPropagation()">
       <button
         class="fd-product-menu__control"
-        aria-controls="9GLB2694"
         aria-haspopup="true"
-        aria-expanded="false"
+        aria-expanded="{dropDownStates.appSwitcherPopover || false}"
+        on:click="toggleDropdownState('appSwitcherPopover')"
+        data-cy="app-switcher"
       >
         <div
           class="fd-shellbar__title fd-product-menu__title"
-          on:click="goTo('/')"
-        >{title}</div>
+         >{selectedNodeLabel || title}</div>
       </button>
     </div>
     <div
       class="fd-popover__body fd-popover__body--right"
-      aria-hidden="false"
-      id="9GLB2694"
+      aria-hidden="{!(dropDownStates.appSwitcherPopover || false)}"
+      id="appSwitcherPopover"
     >
       <nav class="fd-menu">
         <ul class="fd-menu__list">
-          <!-- {#each apps as app} -->
-          <li>
-            <a role="button" class="fd-menu__item">Application One</a>
-          </li>
-          <!-- {/each} -->
+        {#if children && pathData.length > topLevel}
+          {#each children as node}
+            {#if !node.hideFromNav}
+            <li>
+              <a role="button" class="fd-menu__item" on:click="handleClick(node)">{node.label}
+              {#if node.externalLink && node.externalLink.url}
+                <span
+                  class="sap-icon--action sap-icon--s"
+                ></span>
+              {/if}
+              </a>
+            </li>
+            {/if}
+          {/each}
+        {/if}
         </ul>
       </nav>
     </div>
@@ -47,19 +57,50 @@
 {/if}
 <script type="text/javascript">
   import * as Header from './services/header.js';
-  import { LuigiConfig } from '../services/config.js';
-  import { processHeaderSettings } from './services/header.js';
   import * as Routing from '../services/routing.js';
+  import * as Navigation from './services/navigation';
+
+  const setTopNavData = async (component) => {
+    const componentData = component.get();
+    const topNavData = await Navigation.getTopNavData(componentData);
+    component.set(topNavData);
+  };
 
   export default {
     oncreate() {
       Header.processHeaderSettings(this);
+    },
+    onstate({ changed, current, previous }) {
+      if (!previous || previous.pathData != current.pathData) {
+        setTopNavData(this);
+      }
+      this.set({hasApps: this.get().topLevel >= 0 && this.get().visibleNodeCount > 1});
     },
     methods: {
       goTo(path) {
         this.root.getUnsavedChangesModalPromise().then(() => {
           Routing.navigateTo(path);
         });
+      },
+      handleClick(node) {
+        this.fire('handleClick', { node });
+        this.toggleDropdownState('appSwitcherPopover');
+      },
+      toggleDropdownState(name, event = null) {
+        if (event) event.stopPropagation();
+        this.fire('toggleDropdownState', { name });
+      }
+    },
+    computed: {
+      selectedNodeLabel: ({selectedNode, pathParams}) => {
+        if (!selectedNode) {
+          return "";
+        }
+        if (selectedNode.pathSegment.startsWith(':') && pathParams) {
+          return pathParams[selectedNode.pathSegment.substr(1)];
+        } else {
+          return selectedNode.label || selectedNode.pathSegment;
+        }
       }
     }
   };
