@@ -303,8 +303,8 @@
     resizeTabNavToggle = !resizeTabNavToggle;
   };
 
-  const handleNavigation = () => {
-    appLightComponent.handleNavigation();
+  const handleNavigation = (data, config) => {
+    appLightComponent.handleNavigation(data, config);
   };
 
   setContext('handleNavigation', handleNavigation);

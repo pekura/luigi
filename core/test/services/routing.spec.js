@@ -5,7 +5,7 @@ import { afterEach } from 'mocha';
 
 import { Routing } from '../../src/services/routing';
 import { GenericHelpers } from '../../src/utilities/helpers';
-import { LuigiConfig, LuigiI18N } from '../../src/core-api';
+import { LuigiConfig, LuigiI18N, LuigiUX } from '../../src/core-api';
 import { Navigation } from '../../src/navigation/services/navigation';
 
 describe('Routing', function() {
@@ -597,7 +597,7 @@ describe('Routing', function() {
     beforeEach(() => {
       sinon.stub(Routing, 'navigateTo');
       sinon.stub(LuigiI18N, 'getTranslation');
-      sinon.stub(component, 'showAlert');
+      sinon.stub(LuigiUX, 'showAlert');
     });
 
     it('navigate to redirect path', () => {

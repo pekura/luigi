@@ -133,13 +133,13 @@
     }
   };
 
-  const handleNavigation = (data, config) => {
+  export function handleNavigation(data, config) {
     let path = buildPath(data.params);
     path = GenericHelpers.addLeadingSlash(path);
 
     addPreserveView(data, config);
     Routing.navigateTo(path); //navigate to the raw path. Any errors/alerts are handled later
-  };
+  }
 
   const removeQueryParams = str => str.split('?')[0];
 
