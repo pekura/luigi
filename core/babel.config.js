@@ -10,8 +10,12 @@ module.exports = function(api) {
     ]
   ];
   const plugins = [
-    '@babel/plugin-syntax-dynamic-import',
-    '@babel/plugin-transform-regenerator'
+    '@babel/plugin-syntax-dynamic-import'
+    /*[
+      "@babel/transform-runtime", {
+        corejs: 3
+      }
+    ]*/
   ];
   return {
     presets,

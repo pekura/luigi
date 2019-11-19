@@ -19,12 +19,27 @@
   ></Modal>
   {/if}
   <Backdrop>
-    <div
+    <AppLight
+      bind:this="{appLightComponent}"
+      store="{store}"
+      getTranslation="{getTranslation}"
+      getUnsavedChangesModalPromise="{getUnsavedChangesModalPromise}"
+      shouldShowUnsavedChangesModal="{shouldShowUnsavedChangesModal}"
+      showUnsavedChangesModal="{showUnsavedChangesModal}"
+      topNavHeight="48px"
+      topNavHeightTab="51px"
+      leftNavWidth="320px"
+      leftNavWidthCollapsed="40px"
+      on:routeChanged="{routeChanged}"
+      on:showLoadingIndicator="{showLoadingIndicatorChanged}"
+    >
+    </AppLight>
+    <!-- <div
       class="fd-page iframeContainer {mfSplitView.displayed?'lui-split-view':''} {mfSplitView.collapsed?'lui-collapsed':''}"
       use:init
     >
       <Backdrop area="main"></Backdrop>
-    </div>
+    </div> -->
     {#if mfSplitView.displayed}
     <SplitView
       splitViewSettings="{mfSplitView.settings}"
@@ -72,6 +87,7 @@
 
 <script type="text/javascript">
   import Alerts from './Alerts.html';
+  import AppLight, { sendContextToClient } from './AppLight.html';
   import ConfirmationModal from './ConfirmationModal.html';
   import Modal from './Modal.html';
   import Backdrop from './Backdrop.html';
@@ -107,6 +123,8 @@
   export let store;
   export let getTranslation;
 
+  let appLightComponent;
+
   let showLoadingIndicator = false;
 
   let mfSplitView = {
@@ -133,7 +151,6 @@
   let isNavigateBack = false;
   let goBackContext;
   let navigationPath;
-  let contentNode;
   let preservedViews = [];
   let unsavedChanges = {
     isDirty: false,
@@ -144,43 +161,14 @@
   let tabNav;
   let resizeTabNavToggle = false;
 
-  const prepareInternalData = config => {
-    const internalData = {
-      isNavigateBack: isNavigateBack,
-      viewStackSize: preservedViews.length,
-      currentLocale: LuigiI18N.getCurrentLocale(),
-      clientPermissions: config.iframe.luigi.nextViewUrl
-        ? config.iframe.luigi.nextClientPermissions
-        : config.iframe.luigi.clientPermissions
-    };
-    IframeHelpers.specialIframeTypes
-      .map(o => o.iframeConfigKey)
-      .forEach(key => {
-        internalData[key] = config[key] || false;
-      });
-    return internalData;
+  const routeChanged = event => {
+    closeModal();
+    closeSplitView();
+    getComponentWrapper().set(event.detail);
   };
 
-  const sendContextToClient = (config, goBackContext = {}) => {
-    if (!config.iframe) {
-      console.info('iframe does not exist, not able to send context.');
-      return;
-    }
-    const message = {
-      msg: 'luigi.init',
-      context: JSON.stringify(
-        Object.assign({}, config.context || context, goBackContext)
-      ),
-      nodeParams: JSON.stringify(
-        Object.assign({}, config.nodeParams || nodeParams)
-      ),
-      pathParams: JSON.stringify(
-        Object.assign({}, config.pathParams || pathParams)
-      ),
-      internal: JSON.stringify(prepareInternalData(config)),
-      authData: AuthHelpers.getStoredAuthData()
-    };
-    IframeHelpers.sendMessageToIframe(config.iframe, message);
+  const showLoadingIndicatorChanged = event => {
+    showLoadingIndicator = event.detail;
   };
 
   const sendAuthDataToClient = authData => {
@@ -192,44 +180,6 @@
   };
 
   //// NAVIGATION
-
-  const addPreserveView = (data, config) => {
-    if (data.params.preserveView || data.params.viewgroup) {
-      const nextPath = buildPath(data.params);
-      $: preservedViews.push({
-        path: Routing.getNodePath(currentNode, urlParamsRaw),
-        nextPath: nextPath.startsWith('/') ? nextPath : '/' + nextPath,
-        context
-      });
-      //mark iframe with pv if there is a preserved view situation
-      config.iframe['pv'] = 'pv';
-    }
-  };
-
-  const handleNavigation = (data, config) => {
-    let path = buildPath(data.params);
-    path = GenericHelpers.addLeadingSlash(path);
-
-    addPreserveView(data, config);
-    Routing.navigateTo(path); //navigate to the raw path. Any errors/alerts are handled later
-  };
-
-  const removeQueryParams = str => str.split('?')[0];
-
-  const isValidBackRoute = (preservedViews, routeHash) => {
-    if (preservedViews.length === 0) {
-      return false;
-    }
-    // we're only checking the previous goBack state and
-    // compare it with the new route
-    const routePath = routeHash.startsWith('/') ? routeHash : `/${routeHash}`;
-    const lastPreservedView = [...preservedViews].pop();
-    const paths = [
-      removeQueryParams(lastPreservedView.path),
-      removeQueryParams(lastPreservedView.nextPath)
-    ];
-    return paths.includes(removeQueryParams(routePath));
-  };
 
   const getUnsavedChangesModalPromise = source => {
     return new Promise(resolve => {
@@ -328,86 +278,9 @@
       shouldShowUnsavedChangesModal,
       getUnsavedChangesModalPromise,
       showUnsavedChangesModal,
-      showAlert,
-      prepareInternalData,
+      prepareInternalData: appLightComponent.prepareInternalData,
       dispatch
     };
-  };
-
-  const enableRouting = (node, config) => {
-    // initial route handling
-    StateHelpers.doOnStoreChange(
-      store,
-      () => {
-        LuigiConfig._configModificationTimestamp = new Date();
-        const currentPath = Routing.getCurrentPath();
-        Routing.handleRouteChange(
-          currentPath,
-          getComponentWrapper(),
-          node,
-          config
-        );
-      },
-      ['navigation.nodes']
-    );
-
-    // subsequential route handling
-    RoutingHelpers.addRouteChangeListener(path => {
-      const pv = preservedViews;
-      if (!isValidBackRoute(pv, path)) {
-        preservedViews = [];
-        Iframe.removeInactiveIframes(node);
-      }
-
-      closeModal();
-      closeSplitView();
-
-      Routing.handleRouteChange(path, getComponentWrapper(), node, config);
-    });
-  };
-
-  const getSubPath = node => {
-    return GenericHelpers.replaceVars(
-      Routing.getNodePath(node),
-      pathParams,
-      ':',
-      false
-    );
-  };
-
-  const buildPath = params => {
-    let path = params.link;
-    if (params.fromClosestContext) {
-      // from the closest navigation context
-      const node = [...navigationPath]
-        .reverse()
-        .find(n => n.navigationContext && n.navigationContext.length > 0);
-      path = Routing.concatenatePath(getSubPath(node), params.link);
-    } else if (params.fromContext) {
-      // from a given navigation context
-      const navigationContext = params.fromContext;
-      const node = navigationPath.find(
-        n => navigationContext === n.navigationContext
-      );
-      path = Routing.concatenatePath(getSubPath(node), params.link);
-    } else if (params.relative) {
-      // relative
-      path = Routing.concatenatePath(getSubPath(currentNode), params.link);
-    }
-
-    if (params.nodeParams && Object.keys(params.nodeParams).length) {
-      path += '?';
-      Object.entries(params.nodeParams).forEach(entry => {
-        path +=
-          encodeURIComponent(
-            RoutingHelpers.getContentViewParamPrefix() + entry[0]
-          ) +
-          '=' +
-          encodeURIComponent(entry[1]) +
-          '&';
-      });
-    }
-    return path;
   };
 
   const handleNavClick = event => {
@@ -428,6 +301,10 @@
 
   const onResizeTabNav = () => {
     resizeTabNavToggle = !resizeTabNavToggle;
+  };
+
+  const handleNavigation = () => {
+    appLightComponent.handleNavigation();
   };
 
   setContext('handleNavigation', handleNavigation);
@@ -546,7 +423,8 @@
     alerts = alerts.filter(a => a.settings.id !== id);
 
     if (openFromClient) {
-      const iframe = Iframe.getActiveIframe(contentNode);
+      const iframeContainer = IframeHelpers.getIframeContainer();
+      const iframe = Iframe.getActiveIframe(iframeContainer);
       const message = {
         msg: 'luigi.ux.alert.hide',
         id
@@ -598,7 +476,8 @@
     }
 
     if (openFromClient) {
-      const iframe = Iframe.getActiveIframe(contentNode);
+      const iframeContainer = IframeHelpers.getIframeContainer();
+      const iframe = Iframe.getActiveIframe(iframeContainer);
       const message = {
         msg: 'luigi.ux.confirmationModal.hide',
         data: { confirmed: result }
@@ -674,7 +553,7 @@
 
   setContext('openViewInModal', openViewInModal);
 
-  function init(node) {
+  function init() {
     const isolateAllViews = LuigiConfig.getConfigValue(
       'navigation.defaults.isolateView'
     );
@@ -684,13 +563,6 @@
       builderCompatibilityMode: Boolean(window.builderCompatibilityMode),
       isolateAllViews
     };
-    LuigiI18N.addCurrentLocaleChangeListener(locale => {
-      const message = {
-        msg: 'luigi.current-locale-changed',
-        currentLocale: locale
-      };
-      IframeHelpers.broadcastMessageToAllIframes(message);
-    });
 
     window.addEventListener('popstate', async e => {
       const alertQueue = alerts;
@@ -720,37 +592,6 @@
       const iframe = IframeHelpers.getValidMessageSource(e);
       if (!iframe) return;
 
-      if ('custom' === e.data.msg) {
-        const customMessagesListeners =
-          LuigiConfig.getConfigValue('communication.customMessagesListeners') ||
-          {};
-        const message = MessagesListeners.convertCustomMessageInternalToUser(
-          e.data
-        );
-        const customMessageListener = customMessagesListeners[message.id];
-        if (typeof customMessageListener === 'function') {
-          const microfrontend = LuigiElements.getMicrofrontends().find(
-            mf => mf.id === e.source.frameElement.luigi.id
-          );
-
-          customMessageListener(
-            message,
-            microfrontend,
-            GenericHelpers.removeInternalProperties(iframe.luigi.currentNode)
-          );
-        }
-      }
-
-      if ('luigi.navigate.ok' === e.data.msg) {
-        iframe.luigi.viewUrl = iframe.luigi.nextViewUrl;
-        iframe.luigi.nextViewUrl = '';
-        iframe.luigi.clientPermissions = iframe.luigi.nextClientPermissions;
-        delete iframe.luigi.nextClientPermissions;
-        config.navigateOk = true;
-
-        ViewGroupPreloading.preload();
-      }
-
       if ('luigi.get-context' === e.data.msg) {
         const specialIframeProps = {
           modalIframe,
@@ -776,133 +617,32 @@
               modal: typ.iframeKey.startsWith('modal'),
               splitView: typ.iframeKey.startsWith('splitView')
             };
-            sendContextToClient(conf, {});
+            appLightComponent.sendContextToClient(conf, {});
           });
-        } else if (
-          config.iframe &&
-          IframeHelpers.isMessageSource(e, config.iframe)
-        ) {
-          sendContextToClient(config, {});
-          const loadingIndicatorAutoHideEnabled =
-            !currentNode ||
-            !currentNode.loadingIndicator ||
-            currentNode.loadingIndicator.hideAutomatically !== false;
-          if (loadingIndicatorAutoHideEnabled) {
-            showLoadingIndicator = false;
-          }
-
-          ViewGroupPreloading.preload();
-        } else if (iframe.luigi.preloading) {
-          // set empty context to an existing but inactive iframe; this is a valid use case (view group pre-loading)
-          sendContextToClient(
-            {
-              iframe: iframe,
-              context: {},
-              nodeParams: {},
-              pathParams: {},
-              internal: {}
-            },
-            {}
-          );
         }
-        ViewGroupPreloading.viewGroupLoaded(iframe);
-      }
-
-      if ('luigi.show-loading-indicator' === e.data.msg) {
-        showLoadingIndicator = true;
-      }
-
-      if ('luigi.hide-loading-indicator' === e.data.msg) {
-        showLoadingIndicator = false;
       }
 
       if ('luigi.navigation.open' === e.data.msg) {
-        isNavigateBack = false;
         if (e.data.params.modal !== undefined) {
-          let path = buildPath(e.data.params);
+          let path = appLightComponent.buildPath(e.data.params);
           path = GenericHelpers.addLeadingSlash(path);
-          contentNode = node;
           resetMicrofrontendModalData();
           openViewInModal(path, e.data.params.modal);
         } else if (e.data.params.splitView !== undefined) {
-          let path = buildPath(e.data.params);
+          let path = appLightComponent.buildPath(e.data.params);
           path = GenericHelpers.addLeadingSlash(path);
-          contentNode = node;
           mfSplitView = SplitViewSvc.getDefaultData().mfSplitView;
 
           openSplitView(path, e.data.params.splitView);
-        } else {
-          getUnsavedChangesModalPromise().then(() => {
-            handleNavigation(e.data, config);
-            closeModal();
-            closeSplitView();
-          });
         }
       }
 
       if ('luigi.navigation.back' === e.data.msg) {
         if (IframeHelpers.isMessageSource(e, modalIframe)) {
           closeModal();
-          sendContextToClient(config, {
-            goBackContext:
-              e.data.goBackContext && JSON.parse(e.data.goBackContext)
-          });
         } else if (IframeHelpers.isMessageSource(e, splitViewIframe)) {
           closeSplitView();
-          sendContextToClient(config, {
-            goBackContext:
-              e.data.goBackContext && JSON.parse(e.data.goBackContext)
-          });
-        } else {
-          // go back: context from the view
-          if (preservedViews && preservedViews.length) {
-            getUnsavedChangesModalPromise().then(() => {
-              // remove current active iframe and data
-              Iframe.setActiveIframeToPrevious(node);
-              const previousActiveIframeData = preservedViews.pop();
-              // set new active iframe and preservedViews
-              config.iframe = Iframe.getActiveIframe(node);
-              isNavigateBack = true;
-              preservedViews = preservedViews;
-              goBackContext =
-                e.data.goBackContext && JSON.parse(e.data.goBackContext);
-              // TODO: check if getNavigationPath or history pop to update hash / path
-              handleNavigation(
-                { params: { link: previousActiveIframeData.path } },
-                config
-              );
-            });
-          } else {
-            if (e.data.goBackContext) {
-              console.warn(
-                `Warning: goBack() does not support goBackContext value. This is available only when using preserved views feature. Documentation: https://github.com/SAP/luigi/blob/master/docs/luigi-client-api.md#navigate`
-              );
-            }
-            // TODO: does not work with default child node behavior, fixed by #216
-            window.history.back();
-          }
         }
-      }
-
-      if ('luigi.auth.tokenIssued' === e.data.msg) {
-        sendAuthDataToClient(e.data.authData);
-      }
-
-      if ('luigi.navigation.pathExists' === e.data.msg) {
-        const data = e.data.data;
-        const path = buildPath(data);
-        const pathData = await Navigation.getNavigationPath(
-          LuigiConfig.getConfigValueAsync('navigation.nodes'),
-          path
-        );
-        const message = {
-          msg: 'luigi.navigation.pathExists.answer',
-          data: {
-            correlationId: data.id,
-            pathExists: pathData.isExistingRoute
-          }
-        };
-        IframeHelpers.sendMessageToIframe(iframe, message);
       }
 
       if ('luigi.set-page-dirty' === e.data.msg) {
@@ -923,7 +663,6 @@
 
       if ('luigi.ux.confirmationModal.show' === e.data.msg) {
         const settings = e.data.data.settings;
-        contentNode = node;
         resetConfirmationModalData();
         showModal(settings, true).catch(() => {
           /* keep it to avoid runtime errors in browser console */
@@ -939,33 +678,11 @@
           );
           return;
         }
-        contentNode = node;
         showAlert(settings, true).catch(() => {
           /* keep it to avoid runtime errors in browser console */
         });
       }
-
-      if ('luigi.ux.set-current-locale' === e.data.msg) {
-        if (
-          iframe.luigi.clientPermissions &&
-          iframe.luigi.clientPermissions.changeCurrentLocale
-        ) {
-          const { currentLocale } = e.data.data;
-          if (currentLocale) {
-            LuigiI18N.setCurrentLocale(currentLocale);
-          }
-        } else {
-          console.error(
-            'Current local change from client declined because client permission changeCurrentLocale is not set for this view.'
-          );
-        }
-      }
     });
-
-    // listeners are not automatically removed — cancel
-    // them to prevent memory leaks
-    // this.on('destroy', storeListener.cancel);
-    enableRouting(node, config);
   }
 
   setContext('store', store);
@@ -985,6 +702,9 @@
     } else if (responsiveNavSetting === 'semiCollapsible') {
       document.body.classList.add('lui-semiCollapsible');
     }
+
+    init();
+
   });
 
   afterUpdate(() => {});
@@ -1041,7 +761,6 @@
     @include transition(visibility 0s 0.3s, opacity 0.3s linear);
   }
 
-  .iframeContainer,
   .spinnerContainer {
     position: absolute;
     top: $topNavHeight;
@@ -1054,35 +773,6 @@
     display: block;
   }
 
-  .iframeContainer {
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .iframeContainer :global(iframe) {
-    border: none;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    margin-bottom: -5px;
-  }
-  .iframeContainerNoNav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-  }
-  .iframeContainerNoNav :global(iframe) {
-    border: none;
-    width: 100%;
-    height: 100%;
-  }
-
-  .iframeContainerTabNav {
-    top: calc(#{$topNavHeight} + #{$topNavHeightTab});
-  }
-
   .spinnerContainer {
     background: rgba(243, 244, 245, 0.8);
     display: flex;
@@ -1091,7 +781,6 @@
   }
 
   .no-nav {
-    .iframeContainer,
     .spinnerContainer {
       position: fixed;
       top: 0;
@@ -1107,7 +796,6 @@
   }
 
   .no-side-nav {
-    .iframeContainer,
     .spinnerContainer {
       left: 0;
     }
@@ -1128,8 +816,8 @@
       @include transition(left 0.1s linear);
     }
 
-    .iframeContainer,
-    .spinnerContainer,
+    :global(.iframeContainer),
+    :global(.spinnerContainer),
     :global(.splitViewContainer),
     :global(#splitViewDragger),
     :global(#splitViewDraggerBackdrop) {
@@ -1138,8 +826,8 @@
   }
 
   :global(.lui-semiCollapsible) {
-    .iframeContainer,
-    .spinnerContainer {
+    :global(.iframeContainer),
+    :global(.spinnerContainer) {
       @include transition(left 0.1s linear);
     }
     :global(.splitViewContainer),
@@ -1171,8 +859,8 @@
       width: $leftNavWidth;
     }
     :global(body.lui-simpleSlideInNav.lui-leftNavToggle) {
-      .iframeContainer,
-      .spinnerContainer {
+      :global(.iframeContainer),
+      :global(.spinnerContainer) {
         left: 0;
       }
       :global(.splitViewContainer),
@@ -1190,8 +878,8 @@
 
   @media (max-width: $desktopMinWidth - 1) {
     :global(body.lui-simpleSlideInNav) {
-      .iframeContainer,
-      .spinnerContainer {
+      :global(.iframeContainer),
+      :global(.spinnerContainer) {
         left: 0;
       }
       :global(.splitViewContainer),
@@ -1215,8 +903,8 @@
     }
 
     :global(.lui-semiCollapsible) {
-      .iframeContainer,
-      .spinnerContainer {
+      :global(.iframeContainer),
+      :global(.spinnerContainer) {
         left: $leftNavWidthCollapsed;
       }
       :global(.splitViewContainer),
@@ -1238,7 +926,6 @@
 
     .no-nav,
     .no-side-nav {
-      .iframeContainer,
       .spinnerContainer {
         position: absolute;
       }

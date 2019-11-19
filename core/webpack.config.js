@@ -114,7 +114,14 @@ module.exports = {
   },
   plugins: [
     new CleanWebpackPlugin(['public'], {
-      exclude: ['package.json', 'README.md', 'luigi-ie11.css', 'luigi-ie11.js'],
+      exclude: [
+        'package.json',
+        'README.md',
+        'luigi-ie11.css',
+        'luigi-ie11.js',
+        'luigi-mini.css',
+        'luigi-mini.js'
+      ],
       verbose: true
     }),
     new MiniCssExtractPlugin({ filename: '[name].css' }),

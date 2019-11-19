@@ -6,7 +6,7 @@ import {
   RoutingHelpers,
   IframeHelpers
 } from '../utilities/helpers';
-import { LuigiConfig, LuigiI18N } from '../core-api';
+import { LuigiConfig, LuigiI18N, LuigiUX } from '../core-api';
 import { Iframe } from './iframe';
 import { NAVIGATION_DEFAULTS } from './../utilities/luigi-config-defaults';
 
@@ -392,7 +392,7 @@ class RoutingClass {
       type: 'error',
       ttl: 1 //how many redirections the alert will 'survive'.
     };
-    component.showAlert(alertSettings, false);
+    LuigiUX.showAlert(alertSettings);
     this.navigateTo(GenericHelpers.addLeadingSlash(pathToRedirect));
   }
 
