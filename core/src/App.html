@@ -22,7 +22,6 @@
     <AppLight
       bind:this="{appLightComponent}"
       store="{store}"
-      getTranslation="{getTranslation}"
       getUnsavedChangesModalPromise="{getUnsavedChangesModalPromise}"
       shouldShowUnsavedChangesModal="{shouldShowUnsavedChangesModal}"
       showUnsavedChangesModal="{showUnsavedChangesModal}"
@@ -30,16 +29,12 @@
       topNavHeightTab="51px"
       leftNavWidth="320px"
       leftNavWidthCollapsed="40px"
+      splitViewDisplayed="{mfSplitView.displayed}"
+      splitViewCollapsed="{mfSplitView.collapsed}"
       on:routeChanged="{routeChanged}"
       on:showLoadingIndicator="{showLoadingIndicatorChanged}"
     >
     </AppLight>
-    <!-- <div
-      class="fd-page iframeContainer {mfSplitView.displayed?'lui-split-view':''} {mfSplitView.collapsed?'lui-collapsed':''}"
-      use:init
-    >
-      <Backdrop area="main"></Backdrop>
-    </div> -->
     {#if mfSplitView.displayed}
     <SplitView
       splitViewSettings="{mfSplitView.settings}"
@@ -105,18 +100,14 @@
   import { CSS_BREAKPOINTS } from './utilities/constants';
   import {
     GenericHelpers,
-    StateHelpers,
     RoutingHelpers,
-    IframeHelpers,
-    AuthHelpers
+    IframeHelpers
   } from './utilities/helpers';
-  import { LuigiI18N, LuigiConfig, LuigiElements } from './core-api';
+  import { LuigiI18N, LuigiConfig } from './core-api';
   import { Navigation } from './navigation/services/navigation';
   import { Routing } from './services/routing';
   import { Iframe } from './services/iframe';
   import { SplitViewSvc } from './services/split-view';
-  import { ViewGroupPreloading } from './services/preloading';
-  import { MessagesListeners } from './services/messages-listeners';
 
   const dispatch = createEventDispatcher();
 

@@ -1,6 +1,6 @@
 <div class="{hideNav? 'no-nav' : ''} {hideSideNav? 'no-side-nav':''}">
   <div style="--top-nav-height: {topNavHeight}; --top-nav-height-tab: {topNavHeightTab}; --left-nav-width: {leftNavWidth}; --left-nav-width-collapsed: {leftNavWidthCollapsed}"
-    class="iframeContainer {mfSplitView.displayed?'lui-split-view':''} {mfSplitView.collapsed?'lui-collapsed':''}"
+    class="iframeContainer {splitViewDisplayed?'lui-split-view':''} {splitViewCollapsed?'lui-collapsed':''}"
     use:init
   >
     <Backdrop area="main"></Backdrop>
@@ -14,8 +14,6 @@
     setContext,
     createEventDispatcher
   } from 'svelte';
-  import { fade } from 'svelte/transition';
-  import { CSS_BREAKPOINTS } from './utilities/constants';
   import {
     GenericHelpers,
     StateHelpers,
@@ -27,14 +25,12 @@
   import { Navigation } from './navigation/services/navigation';
   import { Routing } from './services/routing';
   import { Iframe } from './services/iframe';
-  import { SplitViewSvc } from './services/split-view';
   import { ViewGroupPreloading } from './services/preloading';
   import { MessagesListeners } from './services/messages-listeners';
 
   const dispatch = createEventDispatcher();
 
   export let store;
-  export let getTranslation;
 
   export let topNavHeight = '0px';
   export let topNavHeightTab = '0px';
@@ -43,17 +39,9 @@
 
   let showLoadingIndicator = false;
 
-  let mfSplitView = {
-    displayed: false
-  };
-  let splitViewValues;
-
   /// MFs
   let modalIframe;
   let modal;
-  let splitViewIframe;
-  let splitViewIframeData;
-  let splitView;
   let context;
   let nodeParams;
   let pathParams;
@@ -76,6 +64,9 @@
   let responsiveNavSetting;
   let tabNav;
   let resizeTabNavToggle = false;
+
+  export let splitViewDisplayed;
+  export let splitViewCollapsed;
 
   export let getUnsavedChangesModalPromise = () => {
     return new Promise(resolve => {
@@ -176,9 +167,6 @@
           hideSideNav,
           isolateView,
           previousNodeValues,
-          mfSplitView,
-          splitViewValues,
-          splitViewIframe,
           showLoadingIndicator,
           tabNav,
           isNavigateBack,
@@ -212,12 +200,6 @@
               isolateView = obj.isolateView;
             } else if (prop === 'previousNodeValues') {
               previousNodeValues = obj.previousNodeValues;
-            } else if (prop === 'mfSplitView') {
-              mfSplitView = obj.mfSplitView;
-            } else if (prop === 'splitViewValues') {
-              splitViewValues = obj.splitViewValues;
-            } else if (prop === 'splitViewIframe') {
-              splitViewIframe = obj.splitViewIframe;
             } else if (prop === 'showLoadingIndicator') {
               showLoadingIndicator = obj.showLoadingIndicator;
             } else if (prop === 'tabNav') {
@@ -528,10 +510,6 @@
     enableRouting(node, config);
   }
 
-  // TODO
-  setContext('store', store);
-  setContext('getTranslation', getTranslation);
-
   onMount(() => {});
 
   afterUpdate(() => {});
@@ -659,14 +637,7 @@
 
     .no-nav,
     .no-side-nav {
-      .iframeContainer,
-      .spinnerContainer {
-        position: absolute;
-      }
-
-      :global(.splitViewContainer),
-      :global(#splitViewDragger),
-      :global(#splitViewDraggerBackdrop) {
+      .iframeContainer {
         position: absolute;
       }
     }
