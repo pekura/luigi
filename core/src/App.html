@@ -22,6 +22,7 @@
     <AppLight
       bind:this="{appLightComponent}"
       store="{store}"
+      unsavedChanges="{unsavedChanges}"
       getUnsavedChangesModalPromise="{getUnsavedChangesModalPromise}"
       shouldShowUnsavedChangesModal="{shouldShowUnsavedChangesModal}"
       showUnsavedChangesModal="{showUnsavedChangesModal}"
@@ -140,7 +141,6 @@
   let isolateView;
   let previousNodeValues;
   let isNavigateBack = false;
-  let goBackContext;
   let navigationPath;
   let preservedViews = [];
   let unsavedChanges = {
@@ -217,8 +217,7 @@
           splitViewIframe,
           showLoadingIndicator,
           tabNav,
-          isNavigateBack,
-          goBackContext
+          isNavigateBack
         };
       },
       set: obj => {
@@ -260,8 +259,6 @@
               tabNav = obj.tabNav;
             } else if (prop === 'isNavigateBack') {
               isNavigateBack = obj.isNavigateBack;
-            } else if (prop === 'goBackContext') {
-              goBackContext = obj.goBackContext;
             }
           });
         }
